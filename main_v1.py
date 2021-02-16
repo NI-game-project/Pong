@@ -5,9 +5,9 @@ from genetic import Genetic_Algorithm
 ########## RUN NORMAL ##########      
 
 #################
-save_every = 1000
+save_every = 2500
 
-episodes = 10_000
+episodes = 10_001
 batch_size = 4
 lr = 3e-4
 decay_rate = 0.99998
@@ -24,7 +24,7 @@ agent.logger.plot('Normal V1')
 
 ########## RUN HYPERNETWORK 1 ########
 
-episodes = 10_000
+episodes = 10_001
 batch_size = 4
 lr = 2e-3
 decay_rate = 0.9999
@@ -42,7 +42,7 @@ agent.logger.plot('Hypernetwork V1')
 ########## RUN HYPERNETWORK 2 ##########
 
 
-episodes = 10_000
+episodes = 10_001
 batch_size = 4
 lr = 1e-3
 decay_rate = 0.9999
@@ -59,7 +59,7 @@ agent.logger.plot('Hypernetwork V2')
 
 ########## RUN HYPERNETWORK 3 ##########
 
-episodes = 10_000
+episodes = 10_001
 batch_size = 16
 lr = 1.5e-3
 decay_rate = 0.9999
@@ -78,7 +78,7 @@ agent.logger.plot('Hypernetwork V3')
 ########## RUN GENETIC ##########
 
 population_size = 32
-generations = 300
+generations = 301
 epsilon = 0.002
 train_episode_num = 3
 elite_workers_num = 8

@@ -12,8 +12,6 @@ from keras import backend as K
 import networks
 import logger
 
-import tensorflow_probability as tfp
-
 tf.keras.backend.clear_session()
 
 class A2C_Agent:
