@@ -49,7 +49,7 @@ class Hypernetwork_PONG(keras.Model):
 
     def __init__(self, name):
         super().__init__()
-        kernel_init = tf.keras.initializers.VarianceScaling(scale=0.01, seed=42)
+        kernel_init = tf.keras.initializers.VarianceScaling(scale=0.35, seed=42)
         bias_init = tf.keras.initializers.Constant(0)
 
         self.dense_1 = Dense(300, activation="relu", kernel_initializer=kernel_init, bias_initializer=bias_init)

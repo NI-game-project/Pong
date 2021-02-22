@@ -32,8 +32,8 @@ class A2C_Agent:
         self.lamBda = lamBda
         self.save_every = save_every
         
-        self.mini_batch_size = 128
-        self.epochs = 5
+        self.mini_batch_size = 64
+        self.epochs = 8
         self.gamma = 0.95
         self.seed = 0
         self.zero_fixer = 1e-8
@@ -118,6 +118,7 @@ class A2C_Agent:
         for step in range(self.episodes):
             
             with tf.GradientTape() as tape: 
+                self.step = step
 
                 self.loss_acc = 0
 
@@ -188,7 +189,7 @@ class A2C_Agent:
                     nearest_distances = tf.identity(-1*tf.math.top_k(-1 * mutual_distances, k=2)[0][:, 1] ,name='nearest_distances') # distance to nearest neighboor for each weight vector sample
                     entropy_estimate = tf.identity(input_noise_size * tf.math.reduce_mean(tf.math.log(nearest_distances + zero_fixer)) + tf.math.digamma(tf.cast(noise_batch_size, tf.float32)), name='entropy_estimate')
                     loss_div = tf.identity( - 1 * entropy_estimate)
-                    loss = self.loss_acc *self.lamBda + loss_div
+                    loss = self.loss_acc + self.lamBda * loss_div
 
                 else:
                     loss_div = 0
@@ -197,14 +198,15 @@ class A2C_Agent:
                 grads = tape.gradient(loss, self.hypernetwork.trainable_weights)
                 self.optimizer.apply_gradients(zip(grads, self.hypernetwork.trainable_weights))
 
-                if step % 10 == 0:
+                if step % 5 == 0:
+                    
                     self.logger.log_performance(step, tf.reduce_sum(self.score).numpy(), self.loss_actor.numpy(), self.loss_critic.numpy(), self.entropy_loss.numpy(), loss_div.numpy(), loss.numpy(), self.optimizer._decayed_lr(tf.float32).numpy(), self.predictions[0:4] )
                 
                 if step % self.save_every == 0:
                     self.hypernetwork.save_weights('{}/{}_hypernetwork.h5'.format(self.save_path, step))
 
-                if self.optimizer._decayed_lr(tf.float32).numpy() < 1e-4:
-                    self.optimizer = Adam(lr=1e-4)
+                if self.optimizer._decayed_lr(tf.float32).numpy() < 1e-5:
+                    self.optimizer = Adam(lr=1e-5)
 
                 self.predictions = []       
 
@@ -282,7 +284,8 @@ class A2C_Agent:
                     self.loss_acc += self.loss_actor + self.entropy_loss + 0.5 * self.loss_critic
                     
                 self.states, self.actions, self.rewards, self.predictions, self.advantages, self.dones, self.next_states = [], [], [], [], [], [],[]
-                    
+                #if self.step % 10==0:
+                 #   print(values,prob)
         self.env.close()
             
 
@@ -395,7 +398,7 @@ class A2C_Agent:
             discounted_r[i] = running_add
 
         discounted_r -= np.mean(discounted_r) # normalizing the result
-        discounted_r /= np.std(discounted_r) # divide by standard deviation
+        #discounted_r /= np.std(discounted_r) # divide by standard deviation
         return discounted_r
 
     
