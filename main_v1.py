@@ -1,11 +1,12 @@
 from agent_hyper import A2C_Agent
 from genetic import Genetic_Algorithm
+from a3c import A3C_Agent
 
 
 ########## RUN NORMAL ##########      
 
 #################
-save_every = 1000
+save_every = 5000
 '''
 episodes = 10_001
 batch_size = 4
@@ -25,17 +26,18 @@ agent.logger.plot('Normal V1')
 
 ########## RUN HYPERNETWORK 1 ########
 
-episodes = 3_001
+episodes = 10_001
 batch_size = 4
 lr = 1e-4
 decay_rate = 0.9999
-lamBda = 5e-4
+lamBda = 5e-6
 save_path = 'experiments/hypernetwork/v1'
-env_name = 'PongDeterministic-v4'
+env_name = 'PongDeterministic-v4'# 'PongNoFrameskip-v4'
 setup = 'hypernetwork'
-agent = A2C_Agent(env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every)
+agent = A2C_Agent('name', env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every)
 
 agent.run_hypernetwork()
+#agent.train(4)
 
 agent.logger.close_files()
 agent.logger.plot('Hypernetwork V1')

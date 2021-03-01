@@ -11,19 +11,25 @@ from keras.optimizers import Adam, RMSprop
 from keras import backend as K
 import networks
 import logger
+import multiprocessing as mp 
+import itertools
+import threading
+
+import time
 
 tf.keras.backend.clear_session()
 
 class A2C_Agent:
     # Actor-Critic Main Optimization Algorithm
-    def __init__(self, env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every):
+    def __init__(self, name, env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every):
         
         # Initialization
+        self.name = name
         self.setup = setup
         self.env_name = env_name       
         self.env = gym.make(env_name)
         self.output_shape = self.env.action_space.n
-
+        
         #hyperperameters
         self.episodes = episodes
         self.batch_size = batch_size
@@ -36,7 +42,11 @@ class A2C_Agent:
         self.epochs = 8
         self.gamma = 0.95
         self.seed = 0
+        np.random.seed(seed= self.seed)
+        self.env.seed(self.seed)
         self.zero_fixer = 1e-8
+        self.episode = 0
+        self.lock = threading.Lock()
 
         #input shape of the pong enviroment
         self.image_width = 80
@@ -72,6 +82,9 @@ class A2C_Agent:
         self.Actor = networks.Actor(input_shape=self.input_shape, output_shape = self.output_shape, seed=self.seed)  
         self.Critic = networks.Critic(input_shape=self.input_shape, output_shape = 1, seed=self.seed)
         
+        #print(self.Actor.summary())
+        #print(self.Critic.summary())
+
         self.lr_schedule = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate = self.lr, decay_steps=1, decay_rate=self.decay_rate)
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
 
@@ -115,16 +128,19 @@ class A2C_Agent:
 
     def run_hypernetwork(self):
 
+        start = time.time()
+
         for step in range(self.episodes):
             
             with tf.GradientTape() as tape: 
+                
                 self.step = step
 
-                self.loss_acc = 0
+                self.loss_acc = np.zeros([self.epochs])
 
-                z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,1000])
+                z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,30])
 
-                weights_1, weights_2, weights_3, weights_4, weights_5, weights_6 = self.hypernetwork(z, self.batch_size)
+                weights_1, weights_2, weights_3, weights_4, weights_5, weights_6, weights_7, weights_8 = self.hypernetwork(z, self.batch_size)
 
                 w1_not_gauged = weights_1[:,:,0:-1]
                 b1_not_gauged = weights_1[:,:,-1]
@@ -138,6 +154,10 @@ class A2C_Agent:
                 b5_not_gauged = weights_5[:,:,-1]
                 w6_not_gauged = weights_6[:,:,0:-1]
                 b6_not_gauged = weights_6[:,-1]
+                w7_not_gauged = weights_7[:,:,0:-1]
+                b7_not_gauged = weights_7[:,-1]
+                w8_not_gauged = weights_8[:,:,0:-1]
+                b8_not_gauged = weights_8[:,-1]
 
                 self.w1 = w1_not_gauged
                 self.w2 = w2_not_gauged
@@ -145,6 +165,8 @@ class A2C_Agent:
                 self.w4 = w4_not_gauged
                 self.w5 = w5_not_gauged
                 self.w6 = w6_not_gauged
+                self.w7 = w7_not_gauged
+                self.w8 = w8_not_gauged
 
                 self.b1 = b1_not_gauged
                 self.b2 = b2_not_gauged
@@ -152,28 +174,52 @@ class A2C_Agent:
                 self.b4 = b4_not_gauged
                 self.b5 = b5_not_gauged
                 self.b6 = b6_not_gauged
+                self.b7 = b7_not_gauged
+                self.b8 = b8_not_gauged
                 
-                weights_actor = tf.concat(axis=1,values=[tf.reshape(self.w1[:,:32,:], (self.batch_size,-1)), tf.reshape(self.b1[:,:32], (self.batch_size,-1)),\
-                    tf.reshape(self.w2[:,:16,:], (self.batch_size,-1)), tf.reshape(self.b2[:,:16], (self.batch_size,-1)),\
-                    tf.reshape(self.w3[:,:256,:], (self.batch_size,-1)), tf.reshape(self.b3[:,:256],(self.batch_size,-1)), \
-                    tf.reshape(self.w4[:,:256,:], (self.batch_size,-1)), tf.reshape(self.b4[:,:256],(self.batch_size,-1)), \
-                    tf.reshape(self.w5,(self.batch_size,-1)), tf.reshape(self.b5, (self.batch_size,-1))])
+                weights_actor = tf.concat(axis=1,values=[tf.reshape(self.w1, (self.batch_size,-1)), tf.reshape(self.b1, (self.batch_size,-1)),\
+                    tf.reshape(self.w2, (self.batch_size,-1)), tf.reshape(self.b2, (self.batch_size,-1)),\
+                    tf.reshape(self.w3, (self.batch_size,-1)), tf.reshape(self.b3,(self.batch_size,-1)), \
+                    tf.reshape(self.w5, (self.batch_size,-1)), tf.reshape(self.b4,(self.batch_size,-1)), \
+                    tf.reshape(self.w7,(self.batch_size,-1)), tf.reshape(self.b5, (self.batch_size,-1))])
                 
-                weights_critic = tf.concat(axis=1, values=[tf.reshape(self.w1[:,32:,:],(self.batch_size,-1)), tf.reshape(self.b1[:,32:], (self.batch_size,-1)),\
-                 tf.reshape(self.w2[:,16:,:],(self.batch_size,-1)), tf.reshape(self.b2[:,16:],(self.batch_size,-1)),
-                  tf.reshape(self.w3[:,256:,:], (self.batch_size,-1)), tf.reshape(self.b3[:,256:],(self.batch_size,-1)), \
-                    tf.reshape(self.w4[:,256:,:], (self.batch_size,-1)), tf.reshape(self.b4[:,256:],(self.batch_size,-1)), \
-                        tf.reshape(self.w6,(self.batch_size,-1)), tf.reshape(self.b6, (self.batch_size,-1))])
+                weights_critic = tf.concat(axis=1, values=[tf.reshape(self.w1,(self.batch_size,-1)), tf.reshape(self.b1, (self.batch_size,-1)),\
+                    tf.reshape(self.w2,(self.batch_size,-1)), tf.reshape(self.b2,(self.batch_size,-1)),
+                    tf.reshape(self.w4, (self.batch_size,-1)), tf.reshape(self.b3,(self.batch_size,-1)), \
+                    tf.reshape(self.w6, (self.batch_size,-1)), tf.reshape(self.b4,(self.batch_size,-1)), \
+                    tf.reshape(self.w8,(self.batch_size,-1)), tf.reshape(self.b6, (self.batch_size,-1))])
                 
+                '''
+                n_threads = self.batch_size
+                threads = []
+                envs = [gym.make(self.env_name) for i in range(n_threads)]
+                for i, env in enumerate(envs):
+                    env.seed(i)
+
+                for i in range(n_threads):
+                    self.set_weights(weights_actor, weights_critic, i)
+                    # Create threads
+                    threads.append(threading.Thread(target=self.play_game, daemon=True, args=(self, envs[i], i)))
+
+                for t in threads:
+                    
+                    t.start()
+                    
+                for t in threads:
+                    t.join()
+                '''
+
                 for num in range(self.batch_size):
+
                     self.score = 0
                     self.set_weights(weights_actor, weights_critic, num)
                     self.play_game()
-                
+
+                        
                 if self.batch_size > 1:
 
                     zero_fixer = 1e-8
-                    input_noise_size = 300
+                    input_noise_size = 30
                     noise_batch_size = tf.identity(self.batch_size,name='noise_batch_size') 
 
                     flattened_network = tf.concat(axis=1,values=[\
@@ -182,25 +228,27 @@ class A2C_Agent:
                             tf.reshape(self.w3, [noise_batch_size, -1]),tf.reshape(self.b3, [noise_batch_size, -1]),\
                             tf.reshape(self.w4, [noise_batch_size, -1]),tf.reshape(self.b4, [noise_batch_size, -1]),\
                             tf.reshape(self.w5, [noise_batch_size, -1]),tf.reshape(self.b5, [noise_batch_size, -1]),\
-                            tf.reshape(self.w6, [noise_batch_size, -1]),tf.reshape(self.b6, [noise_batch_size, -1])])
+                            tf.reshape(self.w6, [noise_batch_size, -1]),tf.reshape(self.b6, [noise_batch_size, -1]),\
+                            tf.reshape(self.w7, [noise_batch_size, -1]),tf.reshape(self.b7, [noise_batch_size, -1]),\
+                            tf.reshape(self.w8, [noise_batch_size, -1]),tf.reshape(self.b8, [noise_batch_size, -1])])
 
                     # entropy estimated using  Kozachenko-Leonenko estimator, with l1 distances
                     mutual_distances = tf.math.reduce_sum(tf.math.abs(tf.expand_dims(flattened_network, 0) - tf.expand_dims(flattened_network, 1)), 2,name='mutual_squared_distances') # all distances between weight vector samples
                     nearest_distances = tf.identity(-1*tf.math.top_k(-1 * mutual_distances, k=2)[0][:, 1] ,name='nearest_distances') # distance to nearest neighboor for each weight vector sample
                     entropy_estimate = tf.identity(input_noise_size * tf.math.reduce_mean(tf.math.log(nearest_distances + zero_fixer)) + tf.math.digamma(tf.cast(noise_batch_size, tf.float32)), name='entropy_estimate')
                     loss_div = tf.identity( - 1 * entropy_estimate)
-                    loss = self.loss_acc + self.lamBda * loss_div
+                    loss = self.loss_acc + self.lamBda * loss_div/self.epochs
 
                 else:
                     loss_div = 0
-                    loss = self.loss_acc *self.lamBda
-        
+                    loss = self.loss_acc 
+
                 grads = tape.gradient(loss, self.hypernetwork.trainable_weights)
                 self.optimizer.apply_gradients(zip(grads, self.hypernetwork.trainable_weights))
 
                 if step % 5 == 0:
-                    
-                    self.logger.log_performance(step, tf.reduce_sum(self.score).numpy(), self.loss_actor.numpy(), self.loss_critic.numpy(), self.entropy_loss.numpy(), loss_div.numpy(), loss.numpy(), self.optimizer._decayed_lr(tf.float32).numpy(), self.predictions[0:4] )
+                    print(time.time() - start)
+                    self.logger.log_performance(step, self.score, self.loss_actor.numpy(), self.loss_critic.numpy(), self.entropy_loss.numpy(), loss_div, loss.numpy(), self.optimizer._decayed_lr(tf.float32).numpy(), self.values[0:4])
                 
                 if step % self.save_every == 0:
                     self.hypernetwork.save_weights('{}/{}_hypernetwork.h5'.format(self.save_path, step))
@@ -209,7 +257,92 @@ class A2C_Agent:
                     self.optimizer = Adam(lr=1e-5)
 
                 self.predictions = []       
+                #print(self.hypernetwork.summary())
 
+    def play_game_2(self, worker, env, thread):        
+        
+        env.seed(42)
+        frame = env.reset()
+        state = worker.GetImage(frame)
+        
+        states, actions, rewards, predictions, advantages, dones, next_states = [], [], [], [], [], [],[]
+
+        done = False
+        score = 0
+
+        self.loss_actor = 0
+        self.loss_critic = 0 
+        self.entropy_loss = 0
+
+        while not done:
+
+            #self.env.render()
+
+            prediction = worker.Actor(state)[0]
+            predictions.append(prediction)             
+            action = np.random.choice(self.output_shape, p=prediction.numpy())
+            next_state, reward, done, _ = env.step(action)
+            next_state = worker.GetImage(next_state)
+
+            states.append(state)
+            next_states.append(next_state)
+            action_onehot = np.zeros([self.output_shape])
+            action_onehot[action] = 1
+            actions.append(action_onehot)
+            rewards.append(reward)
+            dones.append(done)
+            state = next_state
+            score += reward
+            
+            if done:
+
+                self.lock.acquire()
+                # reshape memory to appropriate shape for training
+                states = np.vstack(states)
+                actions = np.vstack(actions)
+                next_states = np.vstack(next_states)
+                dones = np.vstack(dones)
+                discounted_r = np.vstack(self.discount_rewards(rewards))
+
+                for e in range(self.epochs):
+
+                    idx = np.random.randint(low=0, high=(states.shape[0]-self.mini_batch_size))
+                    
+                    action_batch = actions[idx:idx+self.mini_batch_size]
+                    reward_batch = discounted_r[idx:idx+self.mini_batch_size]
+                    done_batch= dones[idx:idx+self.mini_batch_size]
+                    
+                    # Critic part
+                        
+                    values = self.Critic(states[idx:idx+self.mini_batch_size])
+                    values_next = self.Critic(next_states[idx:idx+self.mini_batch_size])
+                    loss_critic = tf.reduce_mean(tf.math.square(values-reward_batch))
+
+                    # Actor part 
+                        
+                    prob = self.Actor(states[idx:idx+self.mini_batch_size])
+                    advantages = reward_batch - values + self.gamma *values_next*np.invert(done_batch).astype(np.float32)
+                    advantages = tf.reshape(advantages, (-1))
+                    log_prob = tf.math.log(tf.reduce_sum(tf.math.multiply(prob,action_batch),axis=1)+self.zero_fixer)
+                    loss_actor = - tf.reduce_mean(log_prob*advantages)
+
+                    entropy_coeff = 0.01
+                    z0 = tf.reduce_sum(prob + self.zero_fixer, axis = 1)
+                    z0 = tf.stack([z0,z0,z0,z0,z0,z0], axis=-1)
+                    p0 = prob / z0 
+                    entropy = tf.reduce_sum(p0 * (tf.math.log(p0 + self.zero_fixer)), axis=-1)
+                    mean_entropy = tf.reduce_mean(entropy) 
+                    entropy_loss =  mean_entropy * entropy_coeff 
+
+                    self.loss_acc[e] += loss_actor + entropy_loss + 0.5 * loss_critic
+
+                    
+                print("episode: {}/{}, thread: {}, score: {}, average: {:.2f} {}".format(self.episode, self.episodes, thread, score, 0, 0))    
+                self.episode += 1
+                self.lock.release()
+                #if self.step % 10==0:
+                 #   print(values,prob)
+        self.env.close()
             
     def play_game(self):        
         
@@ -273,7 +406,7 @@ class A2C_Agent:
                     log_prob = tf.math.log(tf.reduce_sum(tf.math.multiply(prob,actions),axis=1)+self.zero_fixer)
                     self.loss_actor = - tf.reduce_mean(log_prob*advantages)
 
-                    entropy_coeff = 0.05
+                    entropy_coeff = 0.01
                     z0 = tf.reduce_sum(prob + self.zero_fixer, axis = 1)
                     z0 = tf.stack([z0,z0,z0,z0,z0,z0], axis=-1)
                     p0 = prob / z0 
@@ -281,13 +414,14 @@ class A2C_Agent:
                     mean_entropy = tf.reduce_mean(entropy) 
                     self.entropy_loss =  mean_entropy * entropy_coeff 
 
-                    self.loss_acc += self.loss_actor + self.entropy_loss + 0.5 * self.loss_critic
+                    self.loss_acc[e] += self.loss_actor + self.entropy_loss + 0.5 * self.loss_critic
+                    
+                    self.values = values
                     
                 self.states, self.actions, self.rewards, self.predictions, self.advantages, self.dones, self.next_states = [], [], [], [], [], [],[]
                 #if self.step % 10==0:
                  #   print(values,prob)
         self.env.close()
-            
 
 
     def normal_run(self):
@@ -299,6 +433,9 @@ class A2C_Agent:
             done = False
             score = 0
 
+            start = time.time()
+            
+            #print(self.name)
             while not done:
 
                 #self.env.render()
@@ -321,10 +458,13 @@ class A2C_Agent:
                 self.dones.append(done)
                 state = next_state
                 score += reward
-                
+                end = time.time()
+
                 if done:
+                    
 
                     # reshape memory to appropriate shape for training
+                    
                     self.states = np.vstack(self.states)
                     self.actions = np.vstack(self.actions)
                     self.predictions = np.vstack(self.predictions)
@@ -370,7 +510,7 @@ class A2C_Agent:
                             grads = tape.gradient(loss, self.Actor.trainable_weights)
                             self.optimizer.apply_gradients(zip(grads, self.Actor.trainable_weights))
 
-
+                    print(self.name)
                     if step % 10 == 0 and self.setup == 'normal':
                         self.logger.log_performance(step, score, loss_actor.numpy(), loss_critic.numpy(), entropy_loss.numpy(), 0, loss.numpy(), self.optimizer._decayed_lr(tf.float32).numpy(), self.predictions[0:4])
                 
@@ -397,7 +537,7 @@ class A2C_Agent:
             running_add = running_add * gamma + reward[i]
             discounted_r[i] = running_add
 
-        discounted_r -= np.mean(discounted_r) # normalizing the result
+        #discounted_r -= np.mean(discounted_r) # normalizing the result
         #discounted_r /= np.std(discounted_r) # divide by standard deviation
         return discounted_r
 
@@ -416,6 +556,5 @@ class A2C_Agent:
         new_frame = new_frame[np.newaxis, np.newaxis,:,:]
 
         return new_frame 
-
 
 
