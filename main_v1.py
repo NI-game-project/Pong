@@ -28,7 +28,7 @@ agent.logger.plot('Normal V1')
 
 episodes = 10_001
 batch_size = 4
-lr = 5e-5
+lr = 1e-5
 decay_rate = 0.9999
 lamBda = 5e-6
 save_path = 'experiments/hypernetwork/v1'
@@ -37,7 +37,6 @@ setup = 'hypernetwork'
 agent = A2C_Agent('name', env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every)
 
 agent.run_hypernetwork()
-#agent.train(6)
 
 agent.logger.close_files()
 agent.logger.plot('Hypernetwork V1')
@@ -45,15 +44,15 @@ agent.logger.plot('Hypernetwork V1')
 ########## RUN HYPERNETWORK 2 ##########
 
 
-episodes = 3_001
+episodes = 10_001
 batch_size = 4
-lr = 5e-4
+lr = 5e-5
 decay_rate = 0.9999
-lamBda = 10_000
+lamBda = 5e-6
 save_path = 'experiments/hypernetwork/v2'
 env_name = 'PongDeterministic-v4'
 setup = 'hypernetwork'
-agent = A2C_Agent(env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every)
+agent = A2C_Agent('name',env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every)
 
 agent.run_hypernetwork()
 
@@ -62,15 +61,15 @@ agent.logger.plot('Hypernetwork V2')
 
 ########## RUN HYPERNETWORK 3 ##########
 
-episodes = 3_001
+episodes = 10_001
 batch_size = 4
-lr = 1e-3
+lr = 5e-6
 decay_rate = 0.9999
-lamBda = 10_000
+lamBda = 5e-6
 save_path = 'experiments/hypernetwork/v3'
 env_name = 'PongDeterministic-v4'
 setup = 'hypernetwork'
-agent = A2C_Agent(env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every)
+agent = A2C_Agent('name',env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every)
 
 agent.run_hypernetwork()
 

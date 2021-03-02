@@ -14,6 +14,7 @@ import logger
 import itertools
 import threading
 
+
 import time
 
 tf.keras.backend.clear_session()
@@ -40,8 +41,10 @@ class A2C_Agent:
         self.mini_batch_size = 64
         self.epochs = 8
         self.gamma = 0.95
-        self.seed = 0
+        self.seed = 42
         np.random.seed(seed= self.seed)
+        tf.random.set_seed(self.seed)
+        random.seed(self.seed)
         self.env.seed(self.seed)
         self.zero_fixer = 1e-8
         self.episode = 0
@@ -81,8 +84,8 @@ class A2C_Agent:
         self.Actor = networks.Actor(input_shape=self.input_shape, output_shape = self.output_shape, seed=self.seed)  
         self.Critic = networks.Critic(input_shape=self.input_shape, output_shape = 1, seed=self.seed)
         
-        #print(self.Actor.summary())
-        #print(self.Critic.summary())
+        print(self.Actor.summary())
+        print(self.Critic.summary())
 
         self.lr_schedule = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate = self.lr, decay_steps=1, decay_rate=self.decay_rate)
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
@@ -123,11 +126,59 @@ class A2C_Agent:
                     new_weights = tf.reshape(weights[last_used:last_used+no_of_weights], weights_shape) 
                     self.Critic.layers[i].bias = new_weights
                     last_used += no_of_weights
-    
+
+        #for i in range(len(self.Actor.layers)):
+         #   if 'conv' in self.Actor.layers[i].name or  'dense' in self.Actor.layers[i].name: 
+          #      print(self.Actor.layers[i].kernel)
+        
+        
+
+    def pre_train(self):
+
+        optimizer = tf.keras.optimizers.Adam(lr=3e-4)
+        pretrain = 1500
+
+        for i in range(pretrain):
+
+            with tf.GradientTape() as tape: 
+
+                w1_true = np.concatenate(self.Actor.layers[0].get_weights(),axis = None)
+                w2_true = np.concatenate(self.Critic.layers[2].get_weights(),axis = None)
+
+                w3_true = np.concatenate(self.Actor.layers[5].get_weights(),axis = None)
+                w4_true = np.concatenate(self.Critic.layers[5].get_weights(),axis = None)
+
+                w5_true = np.concatenate(self.Actor.layers[6].get_weights(),axis = None)
+                w6_true = np.concatenate(self.Critic.layers[6].get_weights(),axis = None)
+
+                w7_true = np.concatenate(self.Actor.layers[7].get_weights(),axis = None)
+                w8_true = np.concatenate(self.Critic.layers[7].get_weights(),axis = None)                
+                
+                z = np.random.uniform(low = -1, high = 1, size = [1,30])
+
+                w1, w2, w3, w4, w5, w6, w7, w8 = self.hypernetwork(z,1)
+
+                w1 = tf.reshape(w1, -1)
+                w2 = tf.reshape(w2, -1)
+                w3 = tf.reshape(w3, -1)
+                w4 = tf.reshape(w4, -1)
+                w5 = tf.reshape(w5, -1)
+                w6 = tf.reshape(w6, -1)
+                w7 = tf.reshape(w7, -1)
+                w8 = tf.reshape(w8, -1)
+
+                loss_actor = tf.losses.mse(w1_true, w1) + tf.losses.mse(w3_true, w3) + tf.losses.mse(w5_true, w5) + tf.losses.mse(w7_true, w7)
+                loss_critic = tf.losses.mse(w2_true, w2) + tf.losses.mse(w4_true, w4) + tf.losses.mse(w6_true, w6) +tf.losses.mse(w8_true, w8)
+                
+                loss = loss_actor + loss_critic
+                print(loss.numpy())
+                grads = tape.gradient(loss, self.hypernetwork.trainable_weights)
+                optimizer.apply_gradients(zip(grads,self.hypernetwork.trainable_weights))
 
     def run_hypernetwork(self):
 
         start = time.time()
+        self.pre_train()
 
         for step in range(self.episodes):
             
@@ -137,11 +188,10 @@ class A2C_Agent:
 
                 self.loss_acc = np.zeros([self.epochs])
 
-                z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,10])
+                z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,30])
 
                 weights_1, weights_2, weights_3, weights_4, weights_5, weights_6, weights_7, weights_8 = self.hypernetwork(z, self.batch_size)
 
-                print(self.hypernetwork.summary())
                 w1_not_gauged = weights_1[:,:,0:-1]
                 b1_not_gauged = weights_1[:,:,-1]
                 w2_not_gauged = weights_2[:,:,0:-1]
@@ -246,7 +296,7 @@ class A2C_Agent:
                 grads = tape.gradient(loss, self.hypernetwork.trainable_weights)
                 self.optimizer.apply_gradients(zip(grads, self.hypernetwork.trainable_weights))
 
-                if step % 5 == 0:
+                if step % 10 == 0:
                     print(time.time() - start)
                     self.logger.log_performance(step, self.score, self.loss_actor.numpy(), self.loss_critic.numpy(), self.entropy_loss.numpy(), loss_div, loss.numpy(), self.optimizer._decayed_lr(tf.float32).numpy(), self.values[0:4])
                 
@@ -357,7 +407,7 @@ class A2C_Agent:
 
         while not done:
 
-            #self.env.render()
+            self.env.render()
 
             prediction = self.Actor(state)[0]
             self.predictions.append(prediction)             
@@ -414,7 +464,7 @@ class A2C_Agent:
                     mean_entropy = tf.reduce_mean(entropy) 
                     self.entropy_loss =  mean_entropy * entropy_coeff 
 
-                    self.loss_acc[e] += self.loss_actor + self.entropy_loss + 0.5 * self.loss_critic
+                    self.loss_acc[e] += self.loss_actor + self.entropy_loss + self.loss_critic
                     
                     self.values = values
 
@@ -439,7 +489,7 @@ class A2C_Agent:
             while not done:
 
                 #self.env.render()
-
+                print(self.Actor.layers[0].bias)
                 prediction = self.Actor(state)[0]
                 
                 self.predictions.append(prediction)
