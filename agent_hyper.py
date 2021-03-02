@@ -141,6 +141,7 @@ class A2C_Agent:
 
                 weights_1, weights_2, weights_3, weights_4, weights_5, weights_6, weights_7, weights_8 = self.hypernetwork(z, self.batch_size)
 
+                print(self.hypernetwork.summary())
                 w1_not_gauged = weights_1[:,:,0:-1]
                 b1_not_gauged = weights_1[:,:,-1]
                 w2_not_gauged = weights_2[:,:,0:-1]

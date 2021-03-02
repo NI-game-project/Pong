@@ -71,7 +71,7 @@ class Hypernetwork_PONG(keras.Model):
 
         self.dense_1 = Dense(500, activation=self.Activation, kernel_initializer=uniform0, bias_initializer=bias_init)
         self.batch_norm_1 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.dense_2 = Dense(1079*20, activation=self.Activation,kernel_initializer=uniform1, bias_initializer=bias_init)
+        self.dense_2 = Dense(1079*15, activation=self.Activation,kernel_initializer=uniform1, bias_initializer=bias_init)
 
         self.w1_dense_1 = Dense(300, activation=self.Activation, kernel_initializer=uniform2, bias_initializer=bias_init)
         self.batch_norm_w1 = tf.keras.layers.BatchNormalization(momentum=0.98)
@@ -118,7 +118,7 @@ class Hypernetwork_PONG(keras.Model):
         layer_5 = 6
         layer_6 = 1
         
-        encoding = 5
+        encoding = 15
 
         index_1 = layer_1*encoding
         index_2 = index_1 + layer_2*encoding
