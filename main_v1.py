@@ -28,7 +28,7 @@ agent.logger.plot('Normal V1')
 
 episodes = 10_001
 batch_size = 4
-lr = 1e-5
+lr = 1e-4
 decay_rate = 0.9999
 lamBda = 5e-6
 save_path = 'experiments/hypernetwork/v1'

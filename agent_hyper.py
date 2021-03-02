@@ -407,7 +407,7 @@ class A2C_Agent:
 
         while not done:
 
-            self.env.render()
+            #self.env.render()
 
             prediction = self.Actor(state)[0]
             self.predictions.append(prediction)             

@@ -55,7 +55,7 @@ class Hypernetwork_PONG(keras.Model):
         
         
         #kernel_init = tf.keras.initializers.VarianceScaling(scale=1, mode='fan_out', seed=42)
-        kernel_init =tf.keras.initializers.random_uniform(-0.15, 0.15, 42)
+        kernel_init =tf.keras.initializers.glorot_uniform(42)
         bias_init = tf.keras.initializers.Constant(0)
         '''
         self.dense_1 = Dense(500, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
@@ -112,41 +112,41 @@ class Hypernetwork_PONG(keras.Model):
         uniform8 = uniform.random_uniform(-tf.math.sqrt(6/(15*256)),tf.math.sqrt(6/(15*256)))
         uniform9 = uniform.random_uniform(-tf.math.sqrt(6/(100*256)),tf.math.sqrt(6/(100*256)))
 
-        self.dense_1 = Dense(500, activation=self.Activation, kernel_initializer=uniform0, bias_initializer=bias_init)
+        self.dense_1 = Dense(500, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_1 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.dense_2 = Dense(1079*15, activation=self.Activation,kernel_initializer=uniform1, bias_initializer=bias_init)
+        self.dense_2 = Dense(1079*15, activation=self.Activation,kernel_initializer=kernel_init, bias_initializer=bias_init)
 
-        self.w1_dense_1 = Dense(300, activation=self.Activation, kernel_initializer=uniform2, bias_initializer=bias_init)
+        self.w1_dense_1 = Dense(300, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_w1 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.w1_dense_2 = Dense(2001, activation=self.Activation, kernel_initializer=uniform3, bias_initializer=bias_init)
+        self.w1_dense_2 = Dense(2001, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         
-        self.w2_dense_1 = Dense(200, activation=self.Activation, kernel_initializer=uniform4, bias_initializer=bias_init)
+        self.w2_dense_1 = Dense(200, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_w2 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.w2_dense_2 = Dense(801, activation=self.Activation, kernel_initializer=uniform5, bias_initializer=bias_init)
+        self.w2_dense_2 = Dense(801, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
 
-        self.w3_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=uniform6, bias_initializer=bias_init)
+        self.w3_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_w3 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.w3_dense_2 = Dense(321, activation=self.Activation, kernel_initializer=uniform7, bias_initializer=bias_init)
+        self.w3_dense_2 = Dense(321, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
 
-        self.w4_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=uniform8, bias_initializer=bias_init)
+        self.w4_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_w4 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.w4_dense_2 = Dense(321, activation=self.Activation, kernel_initializer=uniform9, bias_initializer=bias_init)
+        self.w4_dense_2 = Dense(321, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         
-        self.w5_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=uniform6, bias_initializer=bias_init)
+        self.w5_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_w5 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.w5_dense_2 = Dense(257, activation=self.Activation, kernel_initializer=uniform7, bias_initializer=bias_init)
+        self.w5_dense_2 = Dense(257, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
 
-        self.w6_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=uniform8, bias_initializer=bias_init)
+        self.w6_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_w6 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.w6_dense_2 = Dense(257, activation=self.Activation, kernel_initializer=uniform9, bias_initializer=bias_init)
+        self.w6_dense_2 = Dense(257, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
 
-        self.w7_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=uniform6, bias_initializer=bias_init)
+        self.w7_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_w7 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.w7_dense_2 = Dense(257, activation=self.Activation, kernel_initializer=uniform7, bias_initializer=bias_init)
+        self.w7_dense_2 = Dense(257, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
 
-        self.w8_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=uniform8, bias_initializer=bias_init)
+        self.w8_dense_1 = Dense(100, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_w8 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.w8_dense_2 = Dense(257, activation=self.Activation, kernel_initializer=uniform9, bias_initializer=bias_init)
+        self.w8_dense_2 = Dense(257, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         
     def Activation(self,input):
         output = tf.maximum(0.05* input, input)
