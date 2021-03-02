@@ -56,22 +56,22 @@ class Hypernetwork_PONG(keras.Model):
         kernel_init = tf.keras.initializers.VarianceScaling(scale=0.275, seed=42)
         bias_init = tf.keras.initializers.Constant(0)
 
-        uniform0 = uniform.random_uniform(-tf.math.sqrt(3/300),tf.math.sqrt(3/300))
+        uniform0 = uniform.random_uniform(-tf.math.sqrt(6/60),tf.math.sqrt(6/600))
 
-        uniform1 = uniform.random_uniform(-tf.math.sqrt(3/500),tf.math.sqrt(3/500))
+        uniform1 = uniform.random_uniform(-tf.math.sqrt(6/10000),tf.math.sqrt(6/10000))
 
-        uniform2 = uniform.random_uniform(-tf.math.sqrt(30/(15*32))/9,tf.math.sqrt(30/(15*32))/9)
-        uniform3 = uniform.random_uniform(-tf.math.sqrt(30/(300*32)/9),tf.math.sqrt(30/(300*32))/9)
+        uniform2 = uniform.random_uniform(-tf.math.sqrt(6/(15*32))/9,tf.math.sqrt(6/(15*32))/9)
+        uniform3 = uniform.random_uniform(-tf.math.sqrt(6/(300*32)/9),tf.math.sqrt(6/(300*32))/9)
     
-        uniform4 = uniform.random_uniform(-tf.math.sqrt(30/(15*16)/9),tf.math.sqrt(30/(15*16))/9)
-        uniform5 = uniform.random_uniform(-tf.math.sqrt(30/(200*16)/9),tf.math.sqrt(30/(200*16))/9)
+        uniform4 = uniform.random_uniform(-tf.math.sqrt(6/(15*16)/9),tf.math.sqrt(6/(15*16))/9)
+        uniform5 = uniform.random_uniform(-tf.math.sqrt(6/(200*16)/9),tf.math.sqrt(6/(200*16))/9)
 
-        uniform6 = uniform.random_uniform(-tf.math.sqrt(30/(15*256)),tf.math.sqrt(30/(15*256)))
-        uniform7 = uniform.random_uniform(-tf.math.sqrt(30/(100*256)),tf.math.sqrt(30/(100*256)))
+        uniform6 = uniform.random_uniform(-tf.math.sqrt(6/(15*256)),tf.math.sqrt(6/(15*256)))
+        uniform7 = uniform.random_uniform(-tf.math.sqrt(6/(100*256)),tf.math.sqrt(6/(100*256)))
 
         self.dense_1 = Dense(500, activation=self.Activation, kernel_initializer=uniform0, bias_initializer=bias_init)
         self.batch_norm_1 = tf.keras.layers.BatchNormalization(momentum=0.98)
-        self.dense_2 = Dense(1079*15, activation=self.Activation,kernel_initializer=uniform1, bias_initializer=bias_init)
+        self.dense_2 = Dense(1079*20, activation=self.Activation,kernel_initializer=uniform1, bias_initializer=bias_init)
 
         self.w1_dense_1 = Dense(300, activation=self.Activation, kernel_initializer=uniform2, bias_initializer=bias_init)
         self.batch_norm_w1 = tf.keras.layers.BatchNormalization(momentum=0.98)

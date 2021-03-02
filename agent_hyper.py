@@ -11,7 +11,6 @@ from keras.optimizers import Adam, RMSprop
 from keras import backend as K
 import networks
 import logger
-import multiprocessing as mp 
 import itertools
 import threading
 
@@ -138,7 +137,7 @@ class A2C_Agent:
 
                 self.loss_acc = np.zeros([self.epochs])
 
-                z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,30])
+                z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,10])
 
                 weights_1, weights_2, weights_3, weights_4, weights_5, weights_6, weights_7, weights_8 = self.hypernetwork(z, self.batch_size)
 
@@ -417,7 +416,7 @@ class A2C_Agent:
                     self.loss_acc[e] += self.loss_actor + self.entropy_loss + 0.5 * self.loss_critic
                     
                     self.values = values
-                    
+
                 self.states, self.actions, self.rewards, self.predictions, self.advantages, self.dones, self.next_states = [], [], [], [], [], [],[]
                 #if self.step % 10==0:
                  #   print(values,prob)
@@ -528,7 +527,7 @@ class A2C_Agent:
 
     def discount_rewards(self, reward):
         # Compute the gamma-discounted rewards over an episode
-        gamma = 0.99   
+        gamma = 0.98   
         running_add = 0
         discounted_r = np.zeros_like(reward)
         for i in reversed(range(0,len(reward))):
