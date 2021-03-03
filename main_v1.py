@@ -27,8 +27,8 @@ agent.logger.plot('Normal V1')
 ########## RUN HYPERNETWORK 1 ########
 
 episodes = 10_001
-batch_size = 4
-lr = 1e-4
+batch_size = 1
+lr = 6e-6
 decay_rate = 0.9999
 lamBda = 5e-6
 save_path = 'experiments/hypernetwork/v1'
@@ -103,7 +103,7 @@ train_episode_num = 3
 elite_workers_num = 8
 entropy_num = 4
 env_name = 'PongDeterministic-v4'
-lr = 3e-4
+lr = 2.5e-5
 seed = 42
 network_type = 'a2c'        
 log_dir = 'experiments/genetic/v1'

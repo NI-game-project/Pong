@@ -54,8 +54,8 @@ class Hypernetwork_PONG(keras.Model):
         super().__init__()
         
         
-        #kernel_init = tf.keras.initializers.VarianceScaling(scale=1, mode='fan_out', seed=42)
-        kernel_init =tf.keras.initializers.glorot_uniform(42)
+        kernel_init = tf.keras.initializers.VarianceScaling(scale=0.5, seed=42)
+        #kernel_init =tf.keras.initializers.glorot_uniform(42)
         bias_init = tf.keras.initializers.Constant(0)
         '''
         self.dense_1 = Dense(500, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
