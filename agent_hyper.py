@@ -180,7 +180,7 @@ class A2C_Agent:
                 loss_critic = tf.losses.mse(w2_true, w2) + tf.losses.mse(w4_true, w4) + tf.losses.mse(w6_true, w6) +tf.losses.mse(w8_true, w8)
                 
                 loss = loss_actor + loss_critic
-                print(loss.numpy())
+                #print(loss.numpy())
                 grads = tape.gradient(loss, self.hypernetwork.trainable_weights)
                 optimizer.apply_gradients(zip(grads,self.hypernetwork.trainable_weights))
 
