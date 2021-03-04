@@ -10,14 +10,14 @@ import tensorflow.keras.initializers as uniform
 def Actor(input_shape, output_shape, seed):
     
     initializer = tf.keras.initializers.glorot_uniform(seed=seed)
-    bias_init = tf.keras.initializers.glorot_uniform(seed=seed)
+    bias_init = tf.keras.initializers.constant(0)
 
     model = tf.keras.models.Sequential([
         Conv2D(32, (5, 5), padding="same", activation="relu", strides=(1,1),input_shape = input_shape, kernel_initializer=initializer, bias_initializer=bias_init),
         MaxPooling2D(pool_size=(2, 2), strides=(2,2), padding="same"),
         Conv2D(16, (5, 5), padding="same", strides=(1,1), activation="relu", kernel_initializer=initializer, bias_initializer=bias_init),
         MaxPooling2D(pool_size=(2, 2), strides=(2,2), padding="same"),
-        tf.keras.layers.Flatten(),
+        tf.keras.layers.Flatten( ),
         Dense(256, activation= "relu",kernel_initializer=initializer, bias_initializer=bias_init),
         Dense(256, activation= "relu",kernel_initializer=initializer, bias_initializer=bias_init),
         Dense(output_shape, activation= "softmax",kernel_initializer=initializer, bias_initializer=bias_init)
@@ -29,7 +29,7 @@ def Critic(input_shape, output_shape, seed):
         
         
     initializer = tf.keras.initializers.glorot_uniform(seed=seed)
-    bias_init = tf.keras.initializers.glorot_uniform(seed=seed)
+    bias_init = tf.keras.initializers.constant(0)
 
     model = tf.keras.models.Sequential([
         Conv2D(32, (5, 5), padding="same", activation="relu", strides=(1,1),input_shape = input_shape, kernel_initializer=initializer, bias_initializer=bias_init),
@@ -54,8 +54,8 @@ class Hypernetwork_PONG(keras.Model):
         super().__init__()
         
         
-        kernel_init = tf.keras.initializers.VarianceScaling(scale=0.5, seed=42)
-        #kernel_init =tf.keras.initializers.glorot_uniform(42)
+        #kernel_init = tf.keras.initializers.VarianceScaling(scale=0.5, seed=42)
+        kernel_init =tf.keras.initializers.glorot_uniform(42)
         bias_init = tf.keras.initializers.Constant(0)
         '''
         self.dense_1 = Dense(500, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
@@ -96,6 +96,7 @@ class Hypernetwork_PONG(keras.Model):
 
         
         '''
+
         uniform0 = uniform.random_normal(-0.2,0.2)
 
         uniform1 = uniform.random_uniform(-0.2,0.2)
@@ -108,7 +109,7 @@ class Hypernetwork_PONG(keras.Model):
 
         uniform6 = uniform.random_uniform(-tf.math.sqrt(6/(15*256)),tf.math.sqrt(6/(15*256)))
         uniform7 = uniform.random_uniform(-tf.math.sqrt(6/(100*256)),tf.math.sqrt(6/(100*256)))
-        #
+        
         uniform8 = uniform.random_uniform(-tf.math.sqrt(6/(15*256)),tf.math.sqrt(6/(15*256)))
         uniform9 = uniform.random_uniform(-tf.math.sqrt(6/(100*256)),tf.math.sqrt(6/(100*256)))
 

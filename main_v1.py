@@ -20,7 +20,7 @@ agent = A2C_Agent(env_name, save_path, setup, lr, batch_size, lamBda, episodes, 
 
 agent.normal_run()
 
-agent.logger.close_files()
+agent.logger.close_files()  
 agent.logger.plot('Normal V1')
 '''
 
@@ -28,14 +28,15 @@ agent.logger.plot('Normal V1')
 
 episodes = 10_001
 batch_size = 1
-lr = 6e-6
-decay_rate = 0.9999
+lr = 5e-5
+decay_rate = 0.999998
 lamBda = 5e-6
 save_path = 'experiments/hypernetwork/v1'
 env_name = 'PongDeterministic-v4'# 'PongNoFrameskip-v4'
 setup = 'hypernetwork'
 agent = A2C_Agent('name', env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every)
 
+#agent.normal_run()
 agent.run_hypernetwork()
 
 agent.logger.close_files()

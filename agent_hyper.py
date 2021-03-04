@@ -38,15 +38,15 @@ class A2C_Agent:
         self.lamBda = lamBda
         self.save_every = save_every
         
-        self.mini_batch_size = 128
-        self.epochs = 8
+        self.mini_batch_size = 32
+        self.epochs = 5
         self.gamma = 0.95
         self.seed = 42
         np.random.seed(seed= self.seed)
         tf.random.set_seed(self.seed)
         random.seed(self.seed)
         self.env.seed(self.seed)
-        self.zero_fixer = 1e-8
+        self.zero_fixer = 1e-7
         self.episode = 0
         self.lock = threading.Lock()
 
@@ -91,6 +91,8 @@ class A2C_Agent:
 
         self.lr_schedule = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate = self.lr, decay_steps=1, decay_rate=self.decay_rate)
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
+        self.optimizer_c = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
+        self.optimizer_a = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
 
     def set_weights(self, weights_actor, weights_critic, num):
 
@@ -137,12 +139,12 @@ class A2C_Agent:
 
     def pre_train(self):
 
-        optimizer = tf.keras.optimizers.Adam(lr=3e-4)
-        pretrain = 3000
+        optimizer = tf.keras.optimizers.Adam(lr=1e-4)
+        pretrain = 300
 
         for i in range(pretrain):
 
-            if i % 100000 == 0:
+            if i % 1000 == 0:
 
                 self.Actor = networks.Actor(input_shape=self.input_shape, output_shape = self.output_shape, seed=i)  
                 self.Critic = networks.Critic(input_shape=self.input_shape, output_shape = 1, seed=i)
@@ -324,14 +326,13 @@ class A2C_Agent:
                     grads = tape.gradient(loss, self.hypernetwork.trainable_weights)
                     self.optimizer.apply_gradients(zip(grads, self.hypernetwork.trainable_weights))
 
-            if step % 3 == 0:
-                print(time.time() - start)
-                self.logger.log_performance(step, self.score, self.loss_actor.numpy(), self.loss_critic.numpy(), 0, self.prob[0:5].numpy(), loss.numpy(), self.optimizer._decayed_lr(tf.float32).numpy(), self.values[0:4].numpy())
+            if step % 5 == 0:
+                #print(time.time() - start)
+                self.logger.log_performance(step, self.score, self.loss_actor.numpy(), self.loss_critic.numpy(), 0, self.predictions[0:5], loss.numpy(), self.optimizer._decayed_lr(tf.float32).numpy(), self.values[0:4])
             
             if step % self.save_every == 0:
                 self.hypernetwork.save_weights('{}/{}_hypernetwork.h5'.format(self.save_path, step))
 
-            self.predictions = []       
             #print(self.hypernetwork.summary())
 
     def play_game_2(self, worker, env, thread):        
@@ -421,61 +422,64 @@ class A2C_Agent:
 
     def update_weights(self, thread):
 
-        self.states, self.actions, self.rewards, self.next_states, self.dones, self.predictions = self.call_memory(thread)
+        self.states, self.actions, self.rewards, self.next_states, self.dones, self.predictions, self.values = self.call_memory(thread)
 
-        #idx = np.random.randint(low=0, high=(self.states.shape[0]-self.mini_batch_size))
-        idx = np.random.randint(low=0, high = self.states.shape[0],size=len(self.rewards))
+        index = np.arange(len(self.rewards))
 
+        for e in range(self.epochs):
+            
+            np.random.shuffle(index)
+            step_size = len(self.rewards)// self.mini_batch_size
 
-        states = self.states[idx]
-        actions = self.actions[idx]
-        rewards = self.rewards[idx]
-        next_states = self.next_states[idx]
-        dones = self.dones[idx]
-        old_prob = self.predictions[idx]
-        
+            for start in range(0,len(self.rewards), step_size):
+                
+                end = start + step_size
+                idx = index[start:end]
 
-        '''
-        states = self.states[idx:idx+self.mini_batch_size]
-        actions = self.actions[idx:idx+self.mini_batch_size]
-        rewards = self.rewards[idx:idx+self.mini_batch_size]
-        next_states = self.next_states[idx:idx+self.mini_batch_size]
-        dones = self.dones[idx:idx+self.mini_batch_size]
-        old_pred = self.predictions[idx:idx+self.mini_batch_size]
-        '''
-        # Critic part
-        values = self.Critic(states)
-        values_next = self.Critic(next_states)
-        self.loss_critic = tf.reduce_mean(tf.math.square(values-rewards))
+                states = self.states[idx]
+                actions = self.actions[idx]
+                rewards = self.rewards[idx]
+                next_states = self.next_states[idx]
+                dones = self.dones[idx]
+                old_prob = self.predictions[idx]
+                old_values = self.values[idx]
+                    
+                # Critic part
+                cliprange = 0.2
 
-        # Actor part 
-        prob = self.Actor(states)
+                values = self.Critic(states)
+                values_next = self.Critic(next_states)
+                values_clipped = old_values + tf.clip_by_value(values - old_values, - cliprange, cliprange)
+                values_loss_1 = tf.math.square(values - rewards)                  
+                values_loss_2 = tf.math.square(values_clipped - rewards)
+                                    
+                self.loss_critic = tf.reduce_mean(tf.math.maximum(values_loss_1, values_loss_2))*0.5
 
-        advantages = rewards - values + self.gamma *values_next*np.invert(dones).astype(np.float32)
-        advantages = tf.reshape(advantages, (-1))
-        
-        log_prob = tf.math.log(tf.reduce_sum(tf.math.multiply(prob,actions),axis=1))
-        log_old_prob = tf.math.log(tf.reduce_sum(tf.math.multiply(old_prob,actions),axis=1))
+                # Actor part 
+                prob = self.Actor(states)
 
-        clipping_value = 0.2
-        r = tf.math.exp(log_prob/(log_old_prob + self.zero_fixer))
-        r1 = r * advantages
-        r2 = tf.clip_by_value(r, 1 - clipping_value, 1 + clipping_value)
-         
-        self.loss_actor = tf.reduce_mean(tf.math.minimum(r1,r2))
-        
-        entropy_coeff = 0.01
-        z0 = tf.reduce_sum(prob + self.zero_fixer, axis = 1)
-        z0 = tf.stack([z0,z0,z0,z0,z0,z0], axis=-1)
-        p0 = prob / z0 
-        entropy = tf.reduce_sum(p0 * (tf.math.log(p0 + self.zero_fixer)), axis=-1)
-        mean_entropy = tf.reduce_mean(entropy) 
-        self.entropy_loss =  mean_entropy * entropy_coeff 
-        
-        self.loss_acc += self.loss_actor + self.loss_critic + self.entropy_loss
-        
-        self.values = values
-        self.prob = prob
+                advantages = rewards - values + self.gamma *values_next*np.invert(dones).astype(np.float32)
+                advantages = np.reshape(advantages, (-1))
+                
+                log_prob = tf.reduce_sum(tf.math.multiply((prob+self.zero_fixer),actions),axis=1)
+                log_old_prob = tf.reduce_sum(tf.math.multiply((old_prob+self.zero_fixer),actions),axis=1)
+
+                clipping_value = 0.2
+                r = log_prob/(log_old_prob+self.zero_fixer)
+                r1 = - advantages * r
+                r2 = - advantages * tf.clip_by_value(r, 1 - clipping_value, 1 + clipping_value)
+                
+                entropy_coeff = 0.01
+                z0 = tf.reduce_sum(prob, axis = 1)
+                z0 = tf.stack([z0,z0,z0,z0,z0,z0], axis=-1)
+                p0 = prob / (z0 + self.zero_fixer) 
+                entropy = tf.reduce_sum(p0 * (tf.math.log(p0 + self.zero_fixer)), axis=-1)
+                mean_entropy = tf.reduce_mean(entropy) 
+                self.entropy_loss =  mean_entropy * entropy_coeff 
+                
+                self.loss_actor = tf.math.reduce_mean(tf.math.maximum(r1,r2), axis=None) - self.entropy_loss
+
+                self.loss_acc += self.loss_actor + self.loss_critic
 
             
     def play_game(self, thread):        
@@ -489,13 +493,15 @@ class A2C_Agent:
         self.loss_critic = 0 
         self.entropy_loss = 0
 
-        self.states, self.actions, self.rewards, self.next_states, self.dones, self.predictions = [], [], [], [], [], []
+        self.states, self.actions, self.rewards, self.next_states, self.dones, self.predictions, self.values = [], [], [], [], [], [], []
 
         while not done:
 
             #self.env.render()
 
             prediction = self.Actor(state)[0]
+            value = self.Critic(state)[0]
+            self.values.append(value)
             self.predictions.append(prediction)             
             action = np.random.choice(self.output_shape, p=prediction.numpy())
             next_state, reward, done, _ = self.env.step(action)
@@ -520,16 +526,17 @@ class A2C_Agent:
                 self.dones = np.vstack(self.dones)
                 discounted_r = np.vstack(self.discount_rewards(self.rewards))
                 self.predictions = np.vstack(self.predictions)
+                self.values = np.vstack(self.values)
 
-                self.save_to_memory(self.states, self.actions, discounted_r, self.next_states, self.dones, self.predictions, thread)
+                self.save_to_memory(self.states, self.actions, discounted_r, self.next_states, self.dones, self.predictions, self.values, thread)
 
                 #if self.step % 10==0:
                  #   print(values,prob)
         self.env.close()
 
-    def save_to_memory(self, states, actions, rewards, next_states, dones, predictions, thread):
+    def save_to_memory(self, states, actions, rewards, next_states, dones, predictions, values, thread):
 
-        self.memory[thread] = states, actions, rewards, next_states, dones, predictions
+        self.memory[thread] = states, actions, rewards, next_states, dones, predictions, values
 
 
     def call_memory(self, thread):
@@ -551,16 +558,17 @@ class A2C_Agent:
             score = 0
 
             start = time.time()
+            self.states, self.actions, self.rewards, self.predictions, self.values, self.advantages, self.dones, self.next_states = [],[], [], [], [], [], [],[]
+
             
             #print(self.name)
             while not done:
 
-                #self.env.render()
-                print(self.Actor.layers[0].bias)
+                self.env.render()
                 prediction = self.Actor(state)[0]
-                
-                self.predictions.append(prediction)
-                self.predictions.append(prediction)             
+                value = self.Critic(state)[0]
+                self.predictions.append(prediction)       
+                self.values.append(value)      
 
                 action = np.random.choice(self.output_shape, p=prediction.numpy())
                 next_state, reward, done, _ = self.env.step(action)
@@ -587,55 +595,91 @@ class A2C_Agent:
                     self.predictions = np.vstack(self.predictions)
                     self.next_states = np.vstack(self.next_states)
                     self.dones = np.vstack(self.dones)
-                    discounted_r = np.vstack(self.discount_rewards(self.rewards))
+                    self.rewards = np.vstack(self.discount_rewards(self.rewards))
+                    self.values = np.vstack(self.values)
+
+                    index = np.arange(len(self.rewards))
 
                     for e in range(self.epochs):
-
+                        '''
                         idx = np.random.randint(low=0, high=(self.states.shape[0]-self.mini_batch_size))
                         
+                        states = self.states[idx:idx+self.mini_batch_size]
                         actions = self.actions[idx:idx+self.mini_batch_size]
-                        rewards = discounted_r[idx:idx+self.mini_batch_size]
+                        rewards = self.rewards[idx:idx+self.mini_batch_size]
+                        next_states = self.next_states[idx:idx+self.mini_batch_size]
                         dones = self.dones[idx:idx+self.mini_batch_size]
-                        
-                        with tf.GradientTape() as tape:
+                        old_prob = self.predictions[idx:idx+self.mini_batch_size]
+                        old_values = self.values[idx:idx+self.mini_batch_size]
+                        '''
+                        np.random.shuffle(index)
+                        step_size = len(self.rewards)// self.mini_batch_size
+
+                        for start in range(0,len(self.rewards), step_size):
                             
-                            values = self.Critic(self.states[idx:idx+self.mini_batch_size])
-                            values_next = self.Critic(self.next_states[idx:idx+self.mini_batch_size])
-                            loss_critic = tf.reduce_mean(tf.math.square(values-rewards))
+                            end = start + step_size
+                            idx = index[start:end]
 
-                            grads = tape.gradient(loss_critic, self.Critic.trainable_weights)
-                            self.optimizer.apply_gradients(zip(grads, self.Critic.trainable_weights))
-                        
-                        with tf.GradientTape() as tape: 
+                            states = self.states[idx]
+                            actions = self.actions[idx]
+                            rewards = self.rewards[idx]
+                            next_states = self.next_states[idx]
+                            dones = self.dones[idx]
+                            old_prob = self.predictions[idx]
+                            old_values = self.values[idx]
                             
-                            prob = self.Actor(self.states[idx:idx+self.mini_batch_size])
-                            advantages = rewards - values + self.gamma *values_next*np.invert(dones).astype(np.float32)
-                            advantages = tf.reshape(advantages, (-1))
-                            log_prob = tf.math.log(tf.reduce_sum(tf.math.multiply(prob,actions),axis=1)+1e-9)
-                            loss_actor = - tf.reduce_mean(log_prob*advantages)
 
-                            entropy_coeff = 0.1
-                            a0 = prob - tf.reduce_max(prob, axis=-1, keepdims=True)
-                            ea0 = tf.exp(a0)
-                            z0 = tf.reduce_sum(ea0, axis=-1, keepdims=True)
-                            p0 = ea0 / z0
-                            entropy = tf.reduce_sum(p0 * (tf.math.log(z0) - a0), axis=-1)
-                            mean_entropy = tf.reduce_mean(entropy) 
-                            entropy_loss = - mean_entropy * entropy_coeff 
+                            with tf.GradientTape() as tape:
+                                
+                                # Critic part
+                                cliprange = 0.2
+            
+                                values = self.Critic(states)
+                                values_next = self.Critic(next_states)
+                                values_clipped = old_values + tf.clip_by_value(values - old_values, - cliprange, cliprange)
+                                values_loss_1 = tf.math.square(values - rewards)                  
+                                values_loss_2 = tf.math.square(values_clipped - rewards)
+                                                    
+                                self.loss_critic = tf.reduce_mean(tf.math.maximum(values_loss_1, values_loss_2))*0.5
+                                grads = tape.gradient(self.loss_critic, self.Critic.trainable_weights)
+                                self.optimizer_c.apply_gradients(zip(grads, self.Critic.trainable_weights))
+                            
+                            with tf.GradientTape() as tape: 
 
-                            loss = loss_actor + entropy_loss
-                            grads = tape.gradient(loss, self.Actor.trainable_weights)
-                            self.optimizer.apply_gradients(zip(grads, self.Actor.trainable_weights))
+                                # Actor part 
+                                prob = self.Actor(states)
 
-                    print(self.name)
-                    if step % 10 == 0 and self.setup == 'normal':
-                        self.logger.log_performance(step, score, loss_actor.numpy(), loss_critic.numpy(), entropy_loss.numpy(), 0, loss.numpy(), self.optimizer._decayed_lr(tf.float32).numpy(), self.predictions[0:4])
+                                advantages = rewards - values + self.gamma *values_next*np.invert(dones).astype(np.float32)
+                                advantages = np.reshape(advantages, (-1))
+                                
+                                log_prob = tf.reduce_sum(tf.math.multiply((prob+self.zero_fixer),actions),axis=1)
+                                log_old_prob = tf.reduce_sum(tf.math.multiply((old_prob+self.zero_fixer),actions),axis=1)
+
+                                clipping_value = 0.2
+                                r = log_prob/(log_old_prob+self.zero_fixer)
+                                r1 = - advantages * r
+                                r2 = - advantages * tf.clip_by_value(r, 1 - clipping_value, 1 + clipping_value)
+                                
+                                entropy_coeff = 0.01
+                                z0 = tf.reduce_sum(prob, axis = 1)
+                                z0 = tf.stack([z0,z0,z0,z0,z0,z0], axis=-1)
+                                p0 = prob / (z0 + self.zero_fixer) 
+                                entropy = tf.reduce_sum(p0 * (tf.math.log(p0 + self.zero_fixer)), axis=-1)
+                                mean_entropy = tf.reduce_mean(entropy) 
+                                self.entropy_loss =  mean_entropy * entropy_coeff 
+                                
+                                self.loss_actor = tf.math.reduce_mean(tf.math.maximum(r1,r2), axis=None) - self.entropy_loss
+
+                                grads = tape.gradient(self.loss_actor, self.Actor.trainable_weights)
+                                self.optimizer_a.apply_gradients(zip(grads, self.Actor.trainable_weights))                    
+                                
+                    if step % 1 == 0: #and self.setup == 'normal':
+                        self.logger.log_performance(step, score, 0, self.loss_critic.numpy(), 0, 0, values[0:5], self.optimizer._decayed_lr(tf.float32).numpy(), prob[0:5])
                 
                     if step % self.save_every == 0 and self.setup == 'normal':
                         self.Actor.save('{}/{}_actor.h5'.format(self.save_path, step))
                         self.Critic.save('{}/{}_critic.h5'.format(self.save_path, step))          
                     
-                    self.states, self.actions, self.rewards, self.predictions, self.advantages, self.dones, self.next_states = [], [], [], [], [], [],[]
 
         self.env.close()
 
@@ -654,8 +698,9 @@ class A2C_Agent:
             running_add = running_add * gamma + reward[i]
             discounted_r[i] = running_add
 
-        #discounted_r -= np.mean(discounted_r) # normalizing the result
-        #discounted_r /= np.std(discounted_r) # divide by standard deviation
+        #discounted_r -= np.min(discounted_r) # normalizing the result
+        #discounted_r = discounted_r*0.5
+        #discounted_r /= tf.reduce_sum(discounted_r,axis=0) # divide by standard deviation
         return discounted_r
 
     
