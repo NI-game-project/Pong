@@ -19,6 +19,12 @@ import time
 
 tf.keras.backend.clear_session()
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if len(gpus) > 0:
+    print(f'GPUs {gpus}')
+    try: tf.config.experimental.set_memory_growth(gpus[0], True)
+    except RuntimeError: pass
+
 class A2C_Agent:
     # Actor-Critic Main Optimization Algorithm
     def __init__(self, name, env_name, save_path, setup, lr, batch_size, lamBda, episodes, decay_rate, save_every):
