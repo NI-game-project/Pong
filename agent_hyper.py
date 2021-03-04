@@ -86,8 +86,8 @@ class A2C_Agent:
         self.Actor = networks.Actor(input_shape=self.input_shape, output_shape = self.output_shape, seed=self.seed)  
         self.Critic = networks.Critic(input_shape=self.input_shape, output_shape = 1, seed=self.seed)
         
-        print(self.Actor.summary())
-        print(self.Critic.summary())
+        #print(self.Actor.summary())
+        #print(self.Critic.summary())
 
         self.lr_schedule = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate = self.lr, decay_steps=1, decay_rate=self.decay_rate)
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
