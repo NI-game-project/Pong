@@ -97,21 +97,21 @@ class Hypernetwork_PONG(keras.Model):
         
         '''
 
-        uniform0 = uniform.random_normal(-0.2,0.2)
+        #uniform0 = uniform.random_normal(-0.2,0.2)
 
-        uniform1 = uniform.random_uniform(-0.2,0.2)
+        #uniform1 = uniform.random_uniform(-0.2,0.2)
 
-        uniform2 = uniform.random_uniform(-tf.math.sqrt(6/(15*80*80))/9,tf.math.sqrt(6/(15*80*80))/9)
-        uniform3 = uniform.random_uniform(-tf.math.sqrt(6/(300*80*80))/9,tf.math.sqrt(6/(300*80*80))/9)
+        #uniform2 = uniform.random_uniform(-tf.math.sqrt(6/(15*80*80))/9,tf.math.sqrt(6/(15*80*80))/9)
+        #uniform3 = uniform.random_uniform(-tf.math.sqrt(6/(300*80*80))/9,tf.math.sqrt(6/(300*80*80))/9)
     
-        uniform4 = uniform.random_uniform(-tf.math.sqrt(6/(15*40*32))/9,tf.math.sqrt(6/(15*40*32))/9)
-        uniform5 = uniform.random_uniform(-tf.math.sqrt(6/(200*40*32))/9,tf.math.sqrt(6/(200*40*32))/9)
+        #uniform4 = uniform.random_uniform(-tf.math.sqrt(6/(15*40*32))/9,tf.math.sqrt(6/(15*40*32))/9)
+        #uniform5 = uniform.random_uniform(-tf.math.sqrt(6/(200*40*32))/9,tf.math.sqrt(6/(200*40*32))/9)
 
-        uniform6 = uniform.random_uniform(-tf.math.sqrt(6/(15*256)),tf.math.sqrt(6/(15*256)))
-        uniform7 = uniform.random_uniform(-tf.math.sqrt(6/(100*256)),tf.math.sqrt(6/(100*256)))
+        #uniform6 = uniform.random_uniform(-tf.math.sqrt(6/(15*256)),tf.math.sqrt(6/(15*256)))
+        #uniform7 = uniform.random_uniform(-tf.math.sqrt(6/(100*256)),tf.math.sqrt(6/(100*256)))
         
-        uniform8 = uniform.random_uniform(-tf.math.sqrt(6/(15*256)),tf.math.sqrt(6/(15*256)))
-        uniform9 = uniform.random_uniform(-tf.math.sqrt(6/(100*256)),tf.math.sqrt(6/(100*256)))
+        #uniform8 = uniform.random_uniform(-tf.math.sqrt(6/(15*256)),tf.math.sqrt(6/(15*256)))
+        #uniform9 = uniform.random_uniform(-tf.math.sqrt(6/(100*256)),tf.math.sqrt(6/(100*256)))
 
         self.dense_1 = Dense(500, activation=self.Activation, kernel_initializer=kernel_init, bias_initializer=bias_init)
         self.batch_norm_1 = tf.keras.layers.BatchNormalization(momentum=0.98)
